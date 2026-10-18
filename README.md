@@ -76,4 +76,3 @@ semanticos ou a seguranca dos plugins. O build valida com a versao real do Kong.
 Proteger main e exigir revisao para prd: alteracoes aprovadas sao publicadas
 automaticamente. Nao publicar rotas sensiveis antes de escolher e validar
 autenticacao. A presenca de um plugin qualquer nao garante protecao.
-

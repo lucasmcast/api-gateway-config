@@ -15,11 +15,46 @@ internal/gateway/
 ```
 
 Cada arquivo de entrada contem `services: [...]` no formato declarativo do Kong.
-Os arquivos iniciais estao vazios: nenhuma API ou autenticacao e publicada.
+Hom publica duas rotas GET explicitas do ms-payment no host `api-hom.macrodata.dev`,
+sem autenticacao, para validar conectividade. Prd permanece sem rotas.
 Adicionar um arquivo por servico no ambiente desejado. Nomes de services e
 routes devem ser unicos dentro de cada ambiente. Usar DNS de Services Kubernetes.
 Configuracoes de plugins ficam no service ou route conforme o escopo desejado.
 Nao versionar tokens, client secrets ou outras credenciais nesses arquivos.
+
+## Rota de diagnostico em hom
+
+O backend atual oferece endpoints de teste, nao operacoes de pagamento.
+As rotas aceitam apenas o host de hom e metodo GET. Cada caminho publico tem
+um mapeamento explicito no plugin OSS `request-transformer`, com `replace.uri`,
+`strip_path: false` e `path_handling: v0`. O destino e diretamente o Service
+`ms-payment.ms-payment-hom.svc.cluster.local:80`, sem usar o Ingress do servico.
+
+- `ms-payment-root`: `~/payment$` transforma `/payment` em `/`.
+- `ms-payment-hello`: `~/payment/hello$` transforma `/payment/hello` em `/hello`.
+- `/payment/healthz`, `/payment/hello/extra` e caminhos nao cadastrados retornam 404 do Kong.
+- Barras finais nao sao aliases: `/payment/` e `/payment/hello/` retornam 404.
+
+O Kong ancora essas regexes no inicio; `$` exige o final do caminho.
+Adicionar endpoints exige declarar novas rotas com seus metodos e URI destino.
+Nao adicionar uma rota generica por prefixo: ela publicaria caminhos nao revisados.
+
+Depois do merge na main, aguardar pipeline, sincronizacao e rollout de hom:
+
+```bash
+curl -i --max-time 20 https://api-hom.macrodata.dev/payment
+curl -i --max-time 20 https://api-hom.macrodata.dev/payment/hello
+curl -i --max-time 20 https://api-hom.macrodata.dev/payment/healthz
+curl -i --max-time 20 https://api-hom.macrodata.dev/payment/hello/extra
+```
+
+Esperado: os dois primeiros com 200 e JSON do ms-payment; os demais com 404 do
+Kong. Configuracoes DNS/rede e a imagem efetiva do backend precisam ser validadas
+no cluster. Estas rotas sao publicas e nao devem carregar dados sensiveis. Definir o
+contrato de pagamentos e autenticacao antes de publicar operacoes reais.
+O Ingress direto existente do ms-payment nao foi removido: validar o gateway
+antes de desativa-lo no repositorio ms-payment-gitops. Enquanto existir, ele
+continua sendo uma entrada independente do Kong.
 
 ## Publicacao por imagem
 

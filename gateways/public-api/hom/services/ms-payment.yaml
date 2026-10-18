@@ -1,1 +1,34 @@
-services: []
+services:
+  - name: ms-payment
+    protocol: http
+    host: ms-payment.ms-payment-hom.svc.cluster.local
+    port: 80
+    routes:
+      - name: ms-payment-root
+        hosts:
+          - api-hom.macrodata.dev
+        methods:
+          - GET
+        paths:
+          - "~/payment$"
+        strip_path: false
+        path_handling: v0
+        plugins:
+          - name: request-transformer
+            config:
+              replace:
+                uri: /
+      - name: ms-payment-hello
+        hosts:
+          - api-hom.macrodata.dev
+        methods:
+          - GET
+        paths:
+          - "~/payment/hello$"
+        strip_path: false
+        path_handling: v0
+        plugins:
+          - name: request-transformer
+            config:
+              replace:
+                uri: /hello

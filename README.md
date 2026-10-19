@@ -77,12 +77,22 @@ go run ./cmd/gateway image-context hom
 docker build -t kong-routes:local dist/hom
 ```
 
-O contexto `dist/hom` e temporario e ignorado pelo Git. O Dockerfile valida
-o schema e testa startup/health/stop com o Kong real antes de publicar.
-Adicionar instalacao e habilitacao de plugins no Dockerfile antes de usa-los.
-Hoje o contexto contem apenas Dockerfile e kong.yml: plugins devem ser instalados
-por dependencias fixadas no Dockerfile; copiar plugins locais exigira ampliar
-o gerador de contexto e o fingerprint. Nao embutir credenciais na imagem.
+O contexto `dist/hom` e temporario e ignorado pelo Git. O Dockerfile usa a base
+privada `macrodata/kong-keycloak-auth` fixada por digest, contendo Kong 3.9.4 e
+o plugin habilitado. Instalar o plugin nao ativa autenticacao: ela depende de
+adiciona-lo explicitamente aos services/routes, com issuer e audience reais.
+As rotas existentes permanecem inalteradas nesta integracao.
+
+O build executa `kong-keycloak-auth validate` e startup/health/stop com o Kong
+real. Nao usar `kong config parse`: no Kong 3.9.4 ele falha com plugin servers.
+O builder precisa autenticar no registry privado tanto para baixar a base
+quanto para publicar a imagem final; a pipeline usa o dockerconfig existente.
+Atualizar a base somente para um digest aprovado pelo scan da pipeline do
+plugin. Alterar o FROM modifica o fingerprint e republica os ambientes, mesmo
+sem alterar rotas; o trigger atual publica hom e prd.
+
+O contexto contem apenas Dockerfile e kong.yml. Copiar plugins locais exigiria
+ampliar o gerador de contexto e o fingerprint. Nao embutir credenciais na imagem.
 
 A pipeline grava repository e digest em `platforms/kong/environments/<env>.yaml`.
 O Argo CD acompanha esses arquivos; o bootstrap so precisa ser aplicado uma vez

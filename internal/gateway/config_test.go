@@ -88,4 +88,22 @@ func TestImageContextAndPrepare(t *testing.T) {
 	if string(result) != "false" {
 		t.Fatal("rebuilt unchanged configuration")
 	}
+	if err := write(filepath.Join(root, "Dockerfile"), []byte("FROM registry.example/kong-keycloak-auth@sha256:new-base\n")); err != nil {
+		t.Fatal(err)
+	}
+	if err := Prepare(root, "hom", gitops, changed, fingerprint); err != nil {
+		t.Fatal(err)
+	}
+	result, _ = os.ReadFile(changed)
+	updatedHash, _ := os.ReadFile(fingerprint)
+	if string(result) != "true" || string(updatedHash) == string(hash) {
+		t.Fatal("base image change did not trigger publication")
+	}
+	copiedDockerfile, err := os.ReadFile(filepath.Join(root, "dist/hom/Dockerfile"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(copiedDockerfile) != "FROM registry.example/kong-keycloak-auth@sha256:new-base\n" {
+		t.Fatal("generated context did not preserve updated base image")
+	}
 }
